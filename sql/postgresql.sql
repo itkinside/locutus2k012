@@ -23,11 +23,11 @@ CREATE TABLE artist_album (
 CREATE TABLE track (
 	mbid character(36) PRIMARY KEY,
 	title varchar NOT NULL,
-	source varchar NOT NULL,
+	source_format varchar NOT NULL,
 	quality varchar NOT NULL,
 	duration integer NOT NULL,
 
-	album_mbid character(36) REFERENCES album (mbid),
+	album_mbid character(36) NOT NULL REFERENCES album (mbid),
 
 	location varchar NOT NULL,
 	filename varchar NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE file (
 	location varchar NOT NULL,
 	extension varchar NOT NULL,
 	fingerprint character(36) NOT NULL, --acoustID
-	sorted boolean NOT NULL,
+	sorted smallint NOT NULL,
 
 	PRIMARY KEY (location, filename)
 );
