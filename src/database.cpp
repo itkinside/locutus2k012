@@ -1,6 +1,7 @@
 #include "database.h"
 
 #include <libpq-fe.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -11,6 +12,7 @@ class Database {
 		~Database();
 		void abort();
 		void connect(char*);
+		int execute_statement(char*, int, ...);
 		int file_exists(struct track_info*);
 		void terminate();
 };
@@ -50,9 +52,38 @@ void Database::connect(char *db_connection_string)
 	printf("Database connected\n");
 }
 
+int Database::execute_statement(char *statement, int argc, ...)
+{
+	if (connection == 0) return 1;
+
+	PGresult *result;
+
+	const char *parameters[argc];
+	int lengths[argc];
+	int binary[argc];
+
+	va_list arguments;
+	va_start(arguments, argc);
+	for (int i = 0; i < argc; i++) {
+		parameters[i] = va_arg(arguments, char*);
+		lengths[i] = strlen(parameters[i]);
+		binary[i] = 0;
+	}
+	va_end(arguments);
+
+	result = PQexecParams(connection, statement, argc, 0, parameters, lengths, binary, 0);
+	if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+		printf("Unable to execute statement %s!\n", statement);
+		return 1;
+	}
+
+	return 0;
+}
+
+
 int Database::file_exists(struct track_info *our_file)
 {
-	if (connection == 0) return 0;
+	if (connection == 0) return 1;
 
 	PGresult *fingerprint_result;
 	const char *parameters[1];
@@ -61,11 +92,11 @@ int Database::file_exists(struct track_info *our_file)
 	fingerprint_result = PQexecPrepared(connection, "file_exists", 1, parameters, 0, 0, 0);
 	if (PQresultStatus(fingerprint_result) != PGRES_TUPLES_OK) {
 		printf("Unable to check for fingerprint in database!");
-		return 0;
+		return 1;
 	}
 	if (PQntuples(fingerprint_result) == 0) { //fingerprint not found
 		PQclear(fingerprint_result);
-		return 0;
+		return 1;
 	}
 	else { //fingerprint found
 		int c_num;
@@ -80,7 +111,7 @@ int Database::file_exists(struct track_info *our_file)
 		value = PQgetvalue(fingerprint_result, 0, c_num);
 		strcpy((*our_file).extension, value);
 		PQclear(fingerprint_result);
-		return 1;
+		return 0;
 	}
 }
 
