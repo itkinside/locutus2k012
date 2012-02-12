@@ -11,12 +11,11 @@ class Database {
 	public:
 		~Database();
 		void abort();
-		void connect(char*);
+		int connect(char*);
 		int execute_statement(char*, int, ...);
 		int file_exists(struct track_info*);
 		void terminate();
 };
-
 
 Database::~Database()
 {
@@ -29,13 +28,13 @@ void Database::abort()
 	connection = 0;
 }
 
-void Database::connect(char *db_connection_string)
+int Database::connect(char *db_connection_string)
 {
 	connection = PQconnectdb(db_connection_string);
 	if (PQstatus(connection) != CONNECTION_OK) {
 		printf("Unable to connect to database!\n");
 		Database::abort();
-		return;
+		return 1;
 	}
 
 	PGresult *result;
@@ -45,11 +44,12 @@ void Database::connect(char *db_connection_string)
 		PQclear(result);
 		printf("Unable to create prepared function (file_exists)!");
 		Database::abort();
-		return;
+		return 1;
 	}
 	PQclear(result);
 
 	printf("Database connected\n");
+	return 0;
 }
 
 int Database::execute_statement(char *statement, int argc, ...)
