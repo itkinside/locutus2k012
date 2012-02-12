@@ -8,6 +8,7 @@
 class Database {
 	private:
 		PGconn *connection;
+		int prepare_queries();
 	public:
 		~Database();
 		void abort();
@@ -37,16 +38,11 @@ int Database::connect(char *db_connection_string)
 		return 1;
 	}
 
-	PGresult *result;
-
-	result = PQprepare(connection, "file_exists", "SELECT * FROM file WHERE fingerprint = ?", 0, 0);
-	if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-		PQclear(result);
-		printf("Unable to create prepared function (file_exists)!");
+	if (Database::prepare_queries() != 0) {
+		printf("Unable to prepare queries!\n");
 		Database::abort();
 		return 1;
 	}
-	PQclear(result);
 
 	printf("Database connected\n");
 	return 0;
@@ -113,6 +109,29 @@ int Database::file_exists(struct track_info *our_file)
 		PQclear(fingerprint_result);
 		return 0;
 	}
+}
+
+int Database::prepare_queries()
+{
+	PGresult *result;
+
+	result = PQprepare(connection, "file_exists", "SELECT * FROM file WHERE fingerprint = ?", 0, 0);
+	if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+		PQclear(result);
+		printf("Unable to create prepared function (file_exists)!");
+		return 1;
+	}
+	PQclear(result);
+
+	result = PQprepare(connection, "update_filepath", "UPDATE file SET location = ?, filename = ? WHERE location = ? AND filename = ?", 0, 0);
+	if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+		PQclear(result);
+		printf("Unable to create prepared function (update_filepath)!");
+		return 1;
+	}
+	PQclear(result);
+
+	return 0;
 }
 
 void Database::terminate()
